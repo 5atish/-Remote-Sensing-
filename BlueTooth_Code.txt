@@ -1,0 +1,128 @@
+<><><><><><><><><><><><><><<<><>CODE FOR BLUETOOTH<><><><><><><><><><><><><><><><><><><><><><><><
+
+//"RBL_nRF8001.h/spi.h/boards.h" is needed in every new project
+#include <SPI.h>
+#include <EEPROM.h>
+#include <boards.h>
+#include <RBL_nRF8001.h>
+
+const byte led = 13;
+const byte interruptPin = 2;
+const byte tempPin = A0;
+const byte ldrPin = A1;
+volatile byte state = LOW; 
+int temp=0;
+int light=0;
+
+void setup()
+{  
+  // Default pins set to 9 and 8 for REQN and RDYN
+  // Set your REQN and RDYN here before ble_begin() if you need
+  ble_set_pins(9, 8);
+  
+  // Set your BLE Shield name here, max. length 10
+  ble_set_name("I am Robot");
+  
+  // Init. and start BLE library.
+  ble_begin();
+  
+  // Enable serial debug
+  Serial.begin(57600);
+}
+
+unsigned char buf[16] = {0};
+unsigned char len = 0;
+
+void loop()
+{
+  int temp = analogRead(tempPin);
+  String tempc = String(temp);
+  Serial.println(temp);
+  Serial.println(tempc);
+  int light = analogRead(ldrPin);
+  String lightc = String(light);
+
+  String t = "temp:";
+  for(int i=0; i< sizeof(t); i++){
+    ble_write(t[i]);
+  }
+  for(int i=0; i< sizeof(tempc); i++){
+    ble_write(tempc[i]);
+  }
+  
+  ble_do_events();
+  
+  String l = "light:";
+  for(int i=0; i< sizeof(l); i++){
+    ble_write(l[i]);
+  }
+  for(int i=0; i< sizeof(lightc); i++){
+    ble_write(lightc[i]);
+  }
+   ble_do_events();
+  delay(1000);
+}
+
+void flick() { //this code doesnt care about your loop(). That is the beuty of interrupt.
+  state = !state; //change state.
+}
+
+
+
+<><><><><><><><><><><><><><><><><><><><><><><CODE FOR LCD DISPLAY><><>><><><><<><><><><><><><><><><><><><><><><
+
+
+#include <LiquidCrystal.h>
+
+const byte led = 13;
+const byte interruptPin = 2;
+const byte tempPin = A0;
+const byte ldrPin = A1;
+volatile byte state = LOW; 
+
+
+LiquidCrystal lcd(13, 9, 5, 4, 3, 6);
+
+void setup() {
+  Serial.begin(57600);
+  pinMode(led, OUTPUT);
+  pinMode(interruptPin, INPUT_PULLUP); 
+
+  attachInterrupt(digitalPinToInterrupt(interruptPin), flick, RISING);//run flick() on rising edge of pin2
+  
+  lcd.begin(16, 2);
+//  lcd.print("Hello freind");//print message once as intro 
+  
+
+  delay(1500);
+}
+
+void loop() {
+  digitalWrite(led, state);
+  int temp = analogRead(tempPin);
+  int light = analogRead(ldrPin);
+  if(state == HIGH){
+    Serial.print("Light: ");
+    Serial.println(light);
+    lcd.setCursor(0, 0);
+    lcd.print("Light value: ");
+    lcd.setCursor(0, 1);
+    lcd.print(light);
+  //  bt_print(0,light);  //print to bluetooth device    
+  }
+  else{
+    Serial.print("Temp: ");
+    Serial.println(temp);
+    lcd.setCursor(0, 0);
+    lcd.print("Temperature val:");
+    lcd.setCursor(0, 1);
+    lcd.print(temp);
+  }
+  
+  delay(1500);//refresh every 1 seconds 
+}
+
+void flick() { //this code doesnt care about your loop(). That is the beuty of interrupt.
+  state = !state; //change state.
+  lcd.clear();//refresh the screen. without this old messages are left in some spaces.
+}
